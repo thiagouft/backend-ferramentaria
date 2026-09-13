@@ -1,0 +1,139 @@
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Usuario {
+  id              Int             @id @default(autoincrement())
+  nome            String          @db.VarChar(150)
+  login           String          @unique @db.VarChar(80)
+  senha           String          @db.VarChar(255)
+  email           String?         @db.VarChar(150)
+  perfil          String          @default("FERRAMENTEIRO") @db.VarChar(30)
+  ativo           Boolean         @default(true)
+  criadoEm        DateTime        @default(now())
+  atualizadoEm    DateTime        @updatedAt
+
+  movimentacoes   MovimentacaoEstoque[]
+  emprestimos     Emprestimo[]
+  devolucoes      ItemEmprestimo[]
+  logs            LogOperacao[]
+}
+
+model Ferramentaria {
+  id              Int             @id @default(autoincrement())
+  descricao       String          @db.VarChar(120)
+  localizacao     String?         @db.VarChar(200)
+  ativo           Boolean         @default(true)
+  criadoEm        DateTime        @default(now())
+
+  ferramentas     Ferramenta[]
+  movimentacoes   MovimentacaoEstoque[]
+  emprestimos     Emprestimo[]
+}
+
+model Pessoa {
+  matricula                 String          @id @db.VarChar(50)
+  nome                      String          @db.VarChar(150)
+  credenciais               String?         @db.VarChar(255)
+  situacao                  Int             @default(1)
+  observacao                String?         @db.Text
+  dataUltimaSincronizacao   DateTime        @default(now())
+  ativo                     Boolean         @default(true)
+
+  emprestimos               Emprestimo[]
+  entregasFeitas            MovimentacaoEstoque[] @relation("ResponsavelEntrega")
+}
+
+model Ferramenta {
+  id              Int             @id @default(autoincrement())
+  idFerramentaria Int
+  ferramentaria   Ferramentaria   @relation(fields: [idFerramentaria], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  descricao       String          @db.VarChar(150)
+  categoria       String?         @db.VarChar(80)
+  valorUnitario   Decimal         @db.Decimal(10, 2)
+  criadoEm        DateTime        @default(now())
+  atualizadoEm    DateTime        @updatedAt
+
+  itens           ItemFerramenta[]
+  movimentacoes   MovimentacaoEstoque[]
+}
+
+model ItemFerramenta {
+  id                      String          @id @default(uuid())
+  idFerramenta            Int
+  ferramenta              Ferramenta      @relation(fields: [idFerramenta], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  numeroTombo             Int
+  codigoIdentificador     String          @unique @db.VarChar(60)
+  qrcodeSvg               String          @db.Text
+  situacao                String          @default("DISPONIVEL") @db.VarChar(30)
+  dataAquisicao           DateTime        @default(now())
+  observacao              String?         @db.Text
+  ativo                   Boolean         @default(true)
+
+  itensEmprestimo         ItemEmprestimo[]
+  movimentacoes           MovimentacaoEstoque[]
+}
+
+model MovimentacaoEstoque {
+  id                      Int                 @id @default(autoincrement())
+  tipo                    String              @db.VarChar(30)
+  idFerramenta            Int
+  ferramenta              Ferramenta          @relation(fields: [idFerramenta], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  idItemFerramenta        String?             
+  itemFerramenta          ItemFerramenta?     @relation(fields: [idItemFerramenta], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  idFerramentaria         Int
+  ferramentaria           Ferramentaria       @relation(fields: [idFerramentaria], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quantidade              Int
+  idUsuarioFerramenteiro  Int
+  ferramenteiro           Usuario             @relation(fields: [idUsuarioFerramenteiro], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  matriculaResponsavel    String?             @db.VarChar(50)
+  responsavelEntrega      Pessoa?             @relation("ResponsavelEntrega", fields: [matriculaResponsavel], references: [matricula], onDelete: SetNull, onUpdate: NoAction)
+  motivo                  String?             @db.Text
+  dataHora                DateTime            @default(now())
+}
+
+model Emprestimo {
+  id                      String              @id @default(uuid())
+  idFerramentaria         Int
+  ferramentaria           Ferramentaria       @relation(fields: [idFerramentaria], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  matriculaColaborador    String              @db.VarChar(50)
+  colaborador             Pessoa              @relation(fields: [matriculaColaborador], references: [matricula], onDelete: NoAction, onUpdate: NoAction)
+  idUsuarioFerramenteiro  Int
+  ferramenteiro           Usuario             @relation(fields: [idUsuarioFerramenteiro], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dataHoraRetirada        DateTime            @default(now())
+  dataPrevisaoDevolucao   DateTime?
+  status                  String              @default("ABERTO") @db.VarChar(30)
+  observacoes             String?             @db.Text
+
+  itens                   ItemEmprestimo[]
+}
+
+model ItemEmprestimo {
+  id                      String              @id @default(uuid())
+  idEmprestimo            String
+  emprestimo              Emprestimo          @relation(fields: [idEmprestimo], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  idItemFerramenta        String
+  itemFerramenta          ItemFerramenta      @relation(fields: [idItemFerramenta], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dataHoraDevolucao       DateTime?
+  idUsuarioDevolucao      Int?
+  usuarioDevolucao        Usuario?            @relation(fields: [idUsuarioDevolucao], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  condicaoDevolucao       String              @default("NORMAL") @db.VarChar(30)
+  observacaoDevolucao     String?             @db.Text
+}
+
+model LogOperacao {
+  id              Int             @id @default(autoincrement())
+  idUsuario       Int?
+  usuario         Usuario?        @relation(fields: [idUsuario], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  acao            String          @db.VarChar(80)
+  entidade        String          @db.VarChar(80)
+  detalhes        String          @db.Text
+  dataHora        DateTime        @default(now())
+  ipOrigem        String?         @db.VarChar(50)
+  dispositivo     String?         @db.VarChar(120)
+}

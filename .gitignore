@@ -1,0 +1,29 @@
+# Dependências
+node_modules/
+/.pnp
+.pnp.js
+
+# Build / Transpilação
+dist/
+build/
+
+# Variáveis de ambiente e segredos
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs do sistema e npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+
+# Arquivos de diagnóstico e testes temporários
+test-api.js
+
+# Arquivos de Sistema Operacional
+.DS_Store
+Thumbs.db
