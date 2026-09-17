@@ -24,6 +24,17 @@ model Usuario {
   logs            LogOperacao[]
 }
 
+model Empresa {
+  id              Int             @id @default(autoincrement())
+  cnpj            String          @unique @db.VarChar(20)
+  razaoSocial     String          @db.VarChar(150)
+  ativo           Boolean         @default(true)
+  criadoEm        DateTime        @default(now())
+  atualizadoEm    DateTime        @updatedAt
+
+  ferramentas     Ferramenta[]
+}
+
 model Ferramentaria {
   id              Int             @id @default(autoincrement())
   descricao       String          @db.VarChar(120)
@@ -47,20 +58,27 @@ model Pessoa {
 
   emprestimos               Emprestimo[]
   entregasFeitas            MovimentacaoEstoque[] @relation("ResponsavelEntrega")
+
+  @@index([credenciais])
+  @@index([situacao, ativo])
 }
 
 model Ferramenta {
   id              Int             @id @default(autoincrement())
   idFerramentaria Int
   ferramentaria   Ferramentaria   @relation(fields: [idFerramentaria], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  idEmpresa       Int
+  empresa         Empresa         @relation(fields: [idEmpresa], references: [id], onDelete: NoAction, onUpdate: NoAction)
   descricao       String          @db.VarChar(150)
-  categoria       String?         @db.VarChar(80)
   valorUnitario   Decimal         @db.Decimal(10, 2)
   criadoEm        DateTime        @default(now())
   atualizadoEm    DateTime        @updatedAt
 
   itens           ItemFerramenta[]
   movimentacoes   MovimentacaoEstoque[]
+
+  @@index([idFerramentaria])
+  @@index([idEmpresa])
 }
 
 model ItemFerramenta {
@@ -68,7 +86,7 @@ model ItemFerramenta {
   idFerramenta            Int
   ferramenta              Ferramenta      @relation(fields: [idFerramenta], references: [id], onDelete: NoAction, onUpdate: NoAction)
   numeroTombo             Int
-  codigoIdentificador     String          @unique @db.VarChar(60)
+  codigoIdentificador     String          @unique @db.VarChar(80)
   qrcodeSvg               String          @db.Text
   situacao                String          @default("DISPONIVEL") @db.VarChar(30)
   dataAquisicao           DateTime        @default(now())
@@ -77,6 +95,9 @@ model ItemFerramenta {
 
   itensEmprestimo         ItemEmprestimo[]
   movimentacoes           MovimentacaoEstoque[]
+
+  @@index([situacao])
+  @@index([idFerramenta, situacao])
 }
 
 model MovimentacaoEstoque {
@@ -95,6 +116,9 @@ model MovimentacaoEstoque {
   responsavelEntrega      Pessoa?             @relation("ResponsavelEntrega", fields: [matriculaResponsavel], references: [matricula], onDelete: SetNull, onUpdate: NoAction)
   motivo                  String?             @db.Text
   dataHora                DateTime            @default(now())
+
+  @@index([idFerramentaria, tipo])
+  @@index([dataHora])
 }
 
 model Emprestimo {
@@ -111,6 +135,10 @@ model Emprestimo {
   observacoes             String?             @db.Text
 
   itens                   ItemEmprestimo[]
+
+  @@index([matriculaColaborador, status])
+  @@index([idFerramentaria, status])
+  @@index([dataHoraRetirada])
 }
 
 model ItemEmprestimo {
@@ -124,6 +152,9 @@ model ItemEmprestimo {
   usuarioDevolucao        Usuario?            @relation(fields: [idUsuarioDevolucao], references: [id], onDelete: SetNull, onUpdate: NoAction)
   condicaoDevolucao       String              @default("NORMAL") @db.VarChar(30)
   observacaoDevolucao     String?             @db.Text
+
+  @@index([idEmprestimo])
+  @@index([idItemFerramenta, dataHoraDevolucao])
 }
 
 model LogOperacao {
@@ -136,4 +167,7 @@ model LogOperacao {
   dataHora        DateTime        @default(now())
   ipOrigem        String?         @db.VarChar(50)
   dispositivo     String?         @db.VarChar(120)
+
+  @@index([entidade, acao])
+  @@index([dataHora])
 }
